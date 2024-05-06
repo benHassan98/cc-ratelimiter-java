@@ -18,7 +18,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 @Component
-@SuppressWarnings({"DataFlowIssue", "OptionalGetWithoutIsPresent"})
+@SuppressWarnings({"DataFlowIssue"})
 public class SlidingWindowCounterRateLimiter extends RateLimiter{
 
     private final BoundListOperations<String, String> boundListOperations;
@@ -99,12 +99,17 @@ public class SlidingWindowCounterRateLimiter extends RateLimiter{
     }
     private void removeWindow(){
 
+        writeLock.lock();
+
         boundListOperations.leftPop();
+
+        writeLock.unlock();
+
         logger.info("SlidingWindowCounter: Removed window from redis server");
     }
 
     @Override
-    public String acceptOrReject(String ipAddr){
+    public String acceptOrReject(String ipAddr) throws Exception{
 
         Long requestTime = Instant.now().getEpochSecond();
         Stack<WindowCounterRecord> stack = new Stack<>();
@@ -114,7 +119,8 @@ public class SlidingWindowCounterRateLimiter extends RateLimiter{
 
         while(boundListOperations.size() > 0){
 
-            var rec = json2Object(boundListOperations.rightPop()).get();
+            var rec = json2Object(boundListOperations.rightPop())
+                    .orElseThrow(()->new Exception("Cannot serialize object from redis"));
             stack.add(rec);
             if(rec.windowStart()<= requestTime && rec.windowStart()+size > requestTime){
                 break;
@@ -131,19 +137,23 @@ public class SlidingWindowCounterRateLimiter extends RateLimiter{
                                     requestWindowRec.windowStart(),
                                     requestWindowRec.requestCnt() + 1
                             )
-                    ).get());
+                    ).orElseThrow(()->new Exception("Cannot deserialize object from redis")));
             res = "Accepted";
         }else{
 
-            var prevRec = json2Object(boundListOperations.rightPop()).get();
-            boundListOperations.rightPush(object2Json(prevRec).get());
+            var prevRec = json2Object(boundListOperations.rightPop())
+                    .orElseThrow(()->new Exception("Cannot deserialize object from redis"));
+
+            boundListOperations.rightPush(object2Json(prevRec)
+                    .orElseThrow(()->new Exception("Cannot serialize object from redis")));
 
             if(prevRec.requestCnt()*(size-(requestWindowRec.windowStart()-requestTime+size)) + requestWindowRec.requestCnt()*size<= requestCnt*size){
                 boundListOperations.rightPush(
                         object2Json(new WindowCounterRecord(
                                 requestWindowRec.windowStart(),
                                 requestWindowRec.requestCnt() + 1
-                        )).get()
+                        ))
+                                .orElseThrow(()->new Exception("Cannot serialize object from redis"))
                 );
                 res = "Accepted";
             }
@@ -151,7 +161,8 @@ public class SlidingWindowCounterRateLimiter extends RateLimiter{
         }
 
         while(!stack.isEmpty()){
-            boundListOperations.rightPush(object2Json(stack.pop()).get());
+            boundListOperations.rightPush(object2Json(stack.pop())
+                    .orElseThrow(()->new Exception("Cannot serialize object from redis")));
         }
 
         writeLock.unlock();

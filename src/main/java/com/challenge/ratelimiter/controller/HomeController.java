@@ -4,7 +4,6 @@ import com.challenge.ratelimiter.pojo.FixedWindowRateLimiter;
 import com.challenge.ratelimiter.pojo.SlidingWindowCounterRateLimiter;
 import com.challenge.ratelimiter.pojo.SlidingWindowLogRateLimiter;
 import com.challenge.ratelimiter.pojo.TokenRateLimiter;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -55,8 +54,8 @@ public class HomeController {
                 ResponseEntity.ok("Accepted"):ResponseEntity.status(429).build();
     }
 
-    @ExceptionHandler(value = JsonProcessingException.class)
-    public ResponseEntity<?> exceptionHandler(JsonProcessingException exception){
+    @ExceptionHandler(value = Exception.class)
+    public ResponseEntity<?> exceptionHandler(Exception exception){
         return ResponseEntity.badRequest().body(exception.getMessage());
     }
 

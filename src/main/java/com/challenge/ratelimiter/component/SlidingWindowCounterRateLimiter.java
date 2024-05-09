@@ -1,4 +1,4 @@
-package com.challenge.ratelimiter.pojo;
+package com.challenge.ratelimiter.component;
 
 import com.challenge.ratelimiter.record.WindowCounterRecord;
 import com.fasterxml.jackson.core.JsonProcessingException;

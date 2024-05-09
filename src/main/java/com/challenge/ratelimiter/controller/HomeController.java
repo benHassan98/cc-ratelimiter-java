@@ -1,9 +1,9 @@
 package com.challenge.ratelimiter.controller;
 
-import com.challenge.ratelimiter.pojo.FixedWindowRateLimiter;
-import com.challenge.ratelimiter.pojo.SlidingWindowCounterRateLimiter;
-import com.challenge.ratelimiter.pojo.SlidingWindowLogRateLimiter;
-import com.challenge.ratelimiter.pojo.TokenRateLimiter;
+import com.challenge.ratelimiter.component.FixedWindowRateLimiter;
+import com.challenge.ratelimiter.component.SlidingWindowCounterRateLimiter;
+import com.challenge.ratelimiter.component.SlidingWindowLogRateLimiter;
+import com.challenge.ratelimiter.component.TokenRateLimiter;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;

@@ -88,10 +88,9 @@ public class SlidingWindowCounterRateLimiter extends RateLimiter{
         }
         object2Json(new WindowCounterRecord(
                 startTime.get(),
-                0L
+                new ArrayList<>()
         ))
-                .ifPresent(boundListOperations::rightPush
-                );
+                .ifPresent(boundListOperations::rightPush);
 
 
         writeLock.unlock();
@@ -116,7 +115,7 @@ public class SlidingWindowCounterRateLimiter extends RateLimiter{
         String res = "Rejected";
 
         writeLock.lock();
-        System.out.println("Start Redis Size: "+boundListOperations.size());
+
         while(boundListOperations.size() > 0){
 
             var rec = json2Object(boundListOperations.rightPop())
@@ -135,20 +134,23 @@ public class SlidingWindowCounterRateLimiter extends RateLimiter{
             var prevRec = json2Object(boundListOperations.rightPop())
                     .orElseThrow(()->new Exception("Cannot deserialize object from redis"));
 
-            prevRecCnt = prevRec.requestCnt();
+            prevRecCnt = prevRec.ipAddrList().size();
 
             boundListOperations.rightPush(object2Json(prevRec)
                     .orElseThrow(()->new Exception("Cannot serialize object")));
 
         }
 
-        long ec = prevRecCnt*(size-(requestWindowRec.windowStart()-requestTime+size)) + (requestWindowRec.requestCnt()*size);
-        System.out.println("Estimated Count: "+ec);
+        long ec = prevRecCnt*(size-(requestWindowRec.windowStart()-requestTime+size)) + (requestWindowRec.ipAddrList().size()*size);
         if(ec< requestCnt*size){
+
+            List<String> newIpAddrList = new ArrayList<>(requestWindowRec.ipAddrList());
+            newIpAddrList.add(ipAddr);
+
             boundListOperations.rightPush(
                     object2Json(new WindowCounterRecord(
                             requestWindowRec.windowStart(),
-                            requestWindowRec.requestCnt() + 1
+                            newIpAddrList
                     ))
                             .orElseThrow(()->new Exception("Cannot serialize object"))
             );
@@ -157,12 +159,11 @@ public class SlidingWindowCounterRateLimiter extends RateLimiter{
             stack.add(requestWindowRec);
         }
 
-
         while(!stack.isEmpty()){
             boundListOperations.rightPush(object2Json(stack.pop())
                     .orElseThrow(()->new Exception("Cannot serialize object")));
         }
-        System.out.println("End Redis Size: "+boundListOperations.size());
+
         writeLock.unlock();
         logger.info("SlidingWindowCounter: Request from {} served with {}", ipAddr, res);
         return res;

@@ -56,7 +56,7 @@ public class HomeController {
 
     @ExceptionHandler(value = Exception.class)
     public ResponseEntity<?> exceptionHandler(Exception exception){
-        return ResponseEntity.badRequest().body(exception.getMessage());
+        return ResponseEntity.status(500).body(exception.getMessage());
     }
 
 }
